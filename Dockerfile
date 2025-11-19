@@ -1,8 +1,8 @@
 FROM cm2network/steamcmd:root
 
-ENV STEAM_USER anonymous 
-ENV STEAM_PASSWORD anonymous
-ENV ARMA_CONFIG_FILE /home/steam/arma3/server.cfg
+ENV STEAM_USER=anonymous 
+ENV STEAM_PASSWORD=anonymous
+ENV ARMA_CONFIG_FILE=/home/steam/arma3/server.cfg
 
 COPY startServer.sh /home/steam/arma3/
 COPY server.cfg /home/steam/arma3/
