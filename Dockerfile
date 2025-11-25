@@ -1,9 +1,5 @@
 FROM cm2network/steamcmd:steam
 
-ENV STEAM_USER=anonymous \
-    STEAM_PASSWORD=anonymous \
-    ARMA_CONFIG_FILE=/home/steam/arma3/server.cfg
-
 RUN mkdir -p /home/steam/arma3/server/configs/profiles
 
 COPY --chmod=0755 startServer.sh /home/steam/arma3/
