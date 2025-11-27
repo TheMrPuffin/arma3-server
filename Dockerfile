@@ -1,9 +1,10 @@
 FROM cm2network/steamcmd:steam
 
+ENV A3_HOSTNAME="Containerised Arma 3 Server by TheMrPuffin"
+
 RUN mkdir -p /home/steam/arma3/server/configs/profiles
 
 COPY --chmod=0755 startServer.sh /home/steam/arma3/
-COPY server.cfg /home/steam/arma3/
 
 WORKDIR /home/steam/arma3/server
 
