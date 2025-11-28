@@ -1,4 +1,4 @@
-name: Docker Build and Push
+name: Docker Build and Push on release tag
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: arma3-server
 
 jobs:
   build-and-push:
@@ -21,25 +21,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Read VERSION file
-        id: version
+      - name: Extract version from tag
+        id: get_version
         run: |
-          VERSION=$(cat VERSION)
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#image-v}"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Version from file: $VERSION"
-
-      - name: Extract version from tag and validate
-        run: |
-          TAG_NAME="${GITHUB_REF_NAME}"
-          TAG_VERSION="${TAG_NAME#image-v}"
-
-          echo "Tag version:     $TAG_VERSION"
-          echo "VERSION file:    $VERSION"
-
-          if [ "$TAG_VERSION" != "$VERSION" ]; then
-            echo "ERROR: Tag version ($TAG_VERSION) does not match VERSION file ($VERSION)"
-            exit 1
-          fi
+          echo "Releasing version: $VERSION"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -50,7 +38,7 @@ jobs:
 
       - name: Build image
         run: |
-          FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
           echo "Building ${FULL_IMAGE}:${VERSION} and :latest"
 
           docker build --pull \
@@ -60,6 +48,6 @@ jobs:
 
       - name: Push image
         run: |
-          FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
           docker push "${FULL_IMAGE}:${VERSION}"
           docker push "${FULL_IMAGE}:latest"
