@@ -1,0 +1,65 @@
+name: Docker Build and Push
+
+on:
+  push:
+    tags:
+      - 'image-v*'
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read VERSION file
+        id: version
+        run: |
+          VERSION=$(cat VERSION)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Version from file: $VERSION"
+
+      - name: Extract version from tag and validate
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG_NAME#image-v}"
+
+          echo "Tag version:     $TAG_VERSION"
+          echo "VERSION file:    $VERSION"
+
+          if [ "$TAG_VERSION" != "$VERSION" ]; then
+            echo "ERROR: Tag version ($TAG_VERSION) does not match VERSION file ($VERSION)"
+            exit 1
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        run: |
+          FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          echo "Building ${FULL_IMAGE}:${VERSION} and :latest"
+
+          docker build --pull \
+            -t "${FULL_IMAGE}:${VERSION}" \
+            -t "${FULL_IMAGE}:latest" \
+            .
+
+      - name: Push image
+        run: |
+          FULL_IMAGE="${REGISTRY}/${IMAGE_NAME}"
+          docker push "${FULL_IMAGE}:${VERSION}"
+          docker push "${FULL_IMAGE}:latest"
