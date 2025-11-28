@@ -16,21 +16,23 @@ else
         echo "Mounted Arma 3 config (/mnt/server.cfg) not detected."
         ARMA_CONFIG_FILE=/home/steam/arma3/server.cfg
 
-        # Loop through A3_ environment variables
+        # generate config block
+
+        # loop through A3_ environment variables
         env | grep '^A3_' | while IFS='=' read -r key value; do
-            # Strip prefix
+            # strip prefix
             arma_key="${key#A3_}"
 
             # if value contains comma OR pipe, treat as array
             if [[ "$value" == *","* || "$value" == *"|"* ]]; then
-                # Support comma or pipe separated values
+                # support comma or pipe separated values
                 IFS=',|' read -ra items <<< "$value"
                 out_items=""
                 for item in "${items[@]}"; do
-                    # Always quote strings
+                    # always quote strings
                     out_items+="\"$item\", "
                 done
-                # Trim trailing comma+space
+                # trim trailing comma+space
                 out_items="${out_items%, }"
                 echo "${arma_key}[] = { ${out_items} };" >> "$ARMA_CONFIG_FILE"
             else
@@ -44,7 +46,6 @@ else
         done
 
         echo "Generated $ARMA_CONFIG_FILE:"
-        cat "$ARMA_CONFIG_FILE"
 
     else
         echo "Mounted Arma 3 config (/mnt/server.cfg) detected."
