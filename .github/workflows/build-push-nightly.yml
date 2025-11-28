@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout (with all tags)
+      - name: Checkout (with tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,21 +26,26 @@ jobs:
       - name: Determine latest image tag
         id: get_version
         run: |
-          # Find all tags matching image-*
           TAGS=$(git tag -l 'image-*')
           if [ -z "$TAGS" ]; then
             echo "No image-* tags found. Nothing to rebuild."
             exit 0
           fi
 
-          # Sort semver-ish and take the last one
           LATEST_TAG=$(printf "%s\n" "$TAGS" | sort -V | tail -n 1)
           VERSION="${LATEST_TAG#image-}"
 
-          echo "LATEST_TAG=$LATEST_TAG"
-          echo "VERSION=$VERSION"
+          echo "Latest tag: $LATEST_TAG"
+          echo "Using version: $VERSION"
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Set lowercase owner
+        id: lowercase_owner
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "OWNER=$OWNER" >> "$GITHUB_ENV"
+          echo "Owner (lowercase): $OWNER"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -51,7 +56,7 @@ jobs:
 
       - name: Build image (nightly)
         run: |
-          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
           echo "Nightly rebuild for ${FULL_IMAGE}:${VERSION} and :latest"
 
           docker build --pull \
@@ -61,6 +66,6 @@ jobs:
 
       - name: Push image (nightly)
         run: |
-          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
           docker push "${FULL_IMAGE}:${VERSION}"
           docker push "${FULL_IMAGE}:latest"
