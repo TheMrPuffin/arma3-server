@@ -26,16 +26,16 @@ jobs:
       - name: Determine latest image tag
         id: get_version
         run: |
-          # Find all tags matching image-v*
-          TAGS=$(git tag -l 'image-v*')
+          # Find all tags matching image-*
+          TAGS=$(git tag -l 'image-*')
           if [ -z "$TAGS" ]; then
-            echo "No image-v* tags found. Nothing to rebuild."
+            echo "No image-* tags found. Nothing to rebuild."
             exit 0
           fi
 
           # Sort semver-ish and take the last one
           LATEST_TAG=$(printf "%s\n" "$TAGS" | sort -V | tail -n 1)
-          VERSION="${LATEST_TAG#image-v}"
+          VERSION="${LATEST_TAG#image-}"
 
           echo "LATEST_TAG=$LATEST_TAG"
           echo "VERSION=$VERSION"
