@@ -16,18 +16,23 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
 
       - name: Extract version from tag
         id: get_version
         run: |
           TAG="${GITHUB_REF_NAME}"
           VERSION="${TAG#image-}"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "Releasing version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Set lowercase owner
+        id: lowercase_owner
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "OWNER=$OWNER" >> $GITHUB_ENV
+          echo "Owner (lowercase): $OWNER"
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -38,9 +43,8 @@ jobs:
 
       - name: Build image
         run: |
-          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
-          echo "Building ${FULL_IMAGE}:${VERSION} and :latest"
-
+          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
+          echo "Building image: ${FULL_IMAGE}:${VERSION}"
           docker build --pull \
             -t "${FULL_IMAGE}:${VERSION}" \
             -t "${FULL_IMAGE}:latest" \
@@ -48,6 +52,6 @@ jobs:
 
       - name: Push image
         run: |
-          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
           docker push "${FULL_IMAGE}:${VERSION}"
           docker push "${FULL_IMAGE}:latest"
