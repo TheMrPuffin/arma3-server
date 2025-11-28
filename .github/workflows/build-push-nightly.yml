@@ -1,0 +1,66 @@
+name: Docker Build and Push Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: arma3-server
+
+jobs:
+  nightly-build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with all tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine latest image tag
+        id: get_version
+        run: |
+          # Find all tags matching image-v*
+          TAGS=$(git tag -l 'image-v*')
+          if [ -z "$TAGS" ]; then
+            echo "No image-v* tags found. Nothing to rebuild."
+            exit 0
+          fi
+
+          # Sort semver-ish and take the last one
+          LATEST_TAG=$(printf "%s\n" "$TAGS" | sort -V | tail -n 1)
+          VERSION="${LATEST_TAG#image-v}"
+
+          echo "LATEST_TAG=$LATEST_TAG"
+          echo "VERSION=$VERSION"
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image (nightly)
+        run: |
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          echo "Nightly rebuild for ${FULL_IMAGE}:${VERSION} and :latest"
+
+          docker build --pull \
+            -t "${FULL_IMAGE}:${VERSION}" \
+            -t "${FULL_IMAGE}:latest" \
+            .
+
+      - name: Push image (nightly)
+        run: |
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}"
+          docker push "${FULL_IMAGE}:${VERSION}"
+          docker push "${FULL_IMAGE}:latest"
