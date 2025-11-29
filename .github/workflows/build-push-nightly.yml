@@ -69,3 +69,35 @@ jobs:
           FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
           docker push "${FULL_IMAGE}:${VERSION}"
           docker push "${FULL_IMAGE}:latest"
+
+      - name: Install jq (for JSON parsing)
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+
+      - name: Cleanup GHCR untagged images
+        run: |
+          OWNER="${OWNER:-${GITHUB_REPOSITORY_OWNER,,}}"
+          PACKAGE="${IMAGE_NAME}"
+          API_URL="https://api.github.com"
+
+          echo "Cleaning untagged GHCR images for ${OWNER}/${PACKAGE} ..."
+
+          VERSIONS=$(curl -sSf \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+
+          echo "$VERSIONS" \
+            | jq -r '.[] | select(.metadata.container.tags | length == 0) | .id' \
+            | while read -r VERSION_ID; do
+                [ -z "$VERSION_ID" ] && continue
+                echo "Deleting untagged version ID: $VERSION_ID"
+                curl -sSf -X DELETE \
+                  -H "Accept: application/vnd.github+json" \
+                  -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                  "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions/${VERSION_ID}" \
+                  && echo "Deleted ${VERSION_ID}"
+              done
