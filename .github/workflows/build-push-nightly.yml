@@ -40,6 +40,12 @@ jobs:
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Checkout code at latest image tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: image-${{ steps.get_version.outputs.version }}
+
       - name: Set lowercase owner
         id: lowercase_owner
         run: |
