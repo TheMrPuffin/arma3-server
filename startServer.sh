@@ -8,10 +8,14 @@ else
 
     echo "Starting SteamCMD to download/update server..."
 
-    /home/steam/steamcmd/steamcmd.sh +force_install_dir /home/steam/arma3/server +login $STEAM_USER $STEAM_PASSWORD +app_update 233780 +quit
+    /home/steam/steamcmd/steamcmd.sh \
+        +force_install_dir /home/steam/arma3/server \
+        +login $STEAM_USER $STEAM_PASSWORD \
+        +app_update 233780 \
+        +quit
 
-    echo "Starting SteamCMD..."
-
+    echo "Checking for mounted server.cfg..."
+    
     if [ ! -f /mnt/server.cfg ]; then
         echo "Mounted Arma 3 config (/mnt/server.cfg) not detected."
         ARMA_CONFIG_FILE=/home/steam/arma3/server.cfg
