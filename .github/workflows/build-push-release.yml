@@ -46,6 +46,7 @@ jobs:
           FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
           echo "Building image: ${FULL_IMAGE}:${VERSION}"
           docker build --pull \
+            --build-arg IMAGE_VERSION="${VERSION}" \
             -t "${FULL_IMAGE}:${VERSION}" \
             -t "${FULL_IMAGE}:latest" \
             .

@@ -66,6 +66,7 @@ jobs:
           echo "Nightly rebuild for ${FULL_IMAGE}:${VERSION} and :latest"
 
           docker build --pull \
+            --build-arg IMAGE_VERSION="${VERSION}" \
             -t "${FULL_IMAGE}:${VERSION}" \
             -t "${FULL_IMAGE}:latest" \
             .
