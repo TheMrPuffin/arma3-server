@@ -1,5 +1,7 @@
 FROM cm2network/steamcmd:steam
 
+ARG IMAGE_VERSION=dev
+
 LABEL org.opencontainers.image.title="Arma 3 Dedicated Server"
 LABEL org.opencontainers.image.description="A fully containerised Arma 3 dedicated server using SteamCMD."
 LABEL org.opencontainers.image.source="https://github.com/TheMrPuffin/arma3-server"
