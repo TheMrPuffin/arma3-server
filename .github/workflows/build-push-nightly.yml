@@ -40,6 +40,8 @@ jobs:
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Checkout code at latest image tag
         uses: actions/checkout@v4
         with:
