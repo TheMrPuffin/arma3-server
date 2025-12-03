@@ -8,9 +8,57 @@ else
 
     echo "Starting SteamCMD to download/update server..."
 
-    /home/steam/steamcmd/steamcmd.sh +force_install_dir /home/steam/arma3/server +login $STEAM_USER $STEAM_PASSWORD +app_update 233780 +quit
+    /home/steam/steamcmd/steamcmd.sh \
+        +force_install_dir /home/steam/arma3/server \
+        +login $STEAM_USER $STEAM_PASSWORD \
+        +app_update 233780 \
+        +quit
 
-    echo "Starting SteamCMD..."
+    MODS_DIR="/home/steam/Steam/steamapps/workshop/content/107410"
+    MOD_LINK_ROOT="/home/steam/arma3/server"
+    MOD_PARAMS=""
+
+    if [ -n "$STEAM_MODS" ]; then
+        echo "Mods requested via STEAM_MODS: $STEAM_MODS"
+
+        IFS=', ' read -ra MOD_ARRAY <<< "$STEAM_MODS"
+
+        for mod_id in "${MOD_ARRAY[@]}"; do
+            [ -z "$mod_id" ] && continue
+
+            echo "Downloading workshop mod $mod_id..."
+            /home/steam/steamcmd/steamcmd.sh \
+                +login "$STEAM_USER" "$STEAM_PASSWORD" \
+                +workshop_download_item 107410 "$mod_id" validate \
+                +quit
+
+            MOD_SOURCE="$MODS_DIR/$mod_id"
+            if [ ! -d "$MOD_SOURCE" ]; then
+                echo "WARNING: Workshop mod $mod_id not found at $MOD_SOURCE"
+                continue
+            fi
+
+            MOD_NAME="@mod_${mod_id}"
+            MOD_TARGET="$MOD_LINK_ROOT/$MOD_NAME"
+
+            if [ ! -e "$MOD_TARGET" ]; then
+                echo "Linking $MOD_TARGET -> $MOD_SOURCE"
+                ln -s "$MOD_SOURCE" "$MOD_TARGET"
+            fi
+
+            if [ -z "$MOD_PARAMS" ]; then
+                MOD_PARAMS="$MOD_NAME"
+            else
+                MOD_PARAMS="$MOD_PARAMS;$MOD_NAME"
+            fi
+        done
+
+        echo "Final -mod string: $MOD_PARAMS"
+    else
+        echo "No mods requested (STEAM_MODS not set)."
+    fi
+
+    echo "Checking for mounted server.cfg..."
 
     if [ ! -f /mnt/server.cfg ]; then
         echo "Mounted Arma 3 config (/mnt/server.cfg) not detected."
@@ -54,8 +102,20 @@ else
 
     echo "Starting Arma 3 server..."
 
-    /home/steam/arma3/server/arma3server_x64 -name="Dockerised Arma 3 Server" -profiles="/home/steam/arma3/server/configs/profiles/" -config="$ARMA_CONFIG_FILE" -port=2302 -world=empty
+    CMD=(
+        /home/steam/arma3/server/arma3server_x64
+        -name="Dockerised Arma 3 Server"
+        -profiles="/home/steam/arma3/server/configs/profiles/"
+        "-config=$ARMA_CONFIG_FILE"
+        -port=2302
+        -world=empty
+    )
 
+    if [ -n "$MOD_PARAMS" ]; then
+        CMD+=("-mod=$MOD_PARAMS")
+    fi
+
+    exec "${CMD[@]}"
 fi
 
 echo "Stopping..."
