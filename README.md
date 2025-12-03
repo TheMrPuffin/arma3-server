@@ -3,7 +3,9 @@
 > ⚠️ This project is under early active development.
 
 This repository provides a fully containerised Arma 3 dedicated server built on top of the
-[`cm2network/steamcmd`](https://hub.docker.com/r/cm2network/steamcmd) base image.  
+[`cm2network/steamcmd`](https://hub.docker.com/r/cm2network/steamcmd) base image.
+
+The latest version is rebuilt nightly with the latest `cm2network/steamcmd` version.
 
 The container will:
 
@@ -183,6 +185,17 @@ motd[] = { "Welcome to my server.", "Hosted in the net." };
 admins[] = { "76561198000000000", "76561198000000001" };
 ```
 
+## Steam Workshop Mods
+
+> ⚠️ This function only works if the Steam account actaully owns Arma 3.
+
+You can load Steam Workshop mods by setting the `STEAM_MODS` environment variable.
+Just provide a list of Workshop item IDs and the container will download and load them automatically.
+
+```sh
+-e STEAM_MODS="450814997, 620019431"
+```
+
 ## 🧭 Roadmap
 
 This project is under active development.  
@@ -193,13 +206,13 @@ Below is an overview of planned features, improvements, and long-term goals.
 - ✔️ Base Docker image using `cm2network/steamcmd` to download and run Arma 3 server
 - ✔️ Support for mounting a custom `server.cfg`
 - ✔️ Environment-variable–driven config (`A3_` prefix system)
+- ✔️ Steam Workshop mod auto-download
 
 ---
 
 ### 🚧 In Progress
 
 - ⏳ Helm chart for Kubernetes deployment
-- ⏳ Automated CI builds
 
 ---
 
@@ -208,7 +221,7 @@ Below is an overview of planned features, improvements, and long-term goals.
 - 📌 Graceful shutdown with server save/notification
 - 📌 Support for mods (server-side mod loading)
 - 📌 Steam Workshop mission auto-download
-- 📌 Steam Workshop mod auto-download
+- 📌 Manual mod loading
 - 📌 Basic health checks & lifecycle hooks (readiness/liveness probes)
 - 📌 Support for headless clients (HC)
 
