@@ -12,6 +12,7 @@ else
         +force_install_dir /home/steam/arma3/server \
         +login $STEAM_USER $STEAM_PASSWORD \
         +app_update 233780 \
+        -beta creatordlc \
         +quit
 
     MODS_DIR="/home/steam/Steam/steamapps/workshop/content/107410"
