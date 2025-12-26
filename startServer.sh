@@ -6,13 +6,20 @@ if [ -z "${STEAM_USER}" ] || [ -z "${STEAM_PASSWORD}" ]; then
     echo "One or both required environment variables (STEAM_USER, STEAM_PASSWORD) are not set."
 else
 
+    if [[ "${STEAM_CREATORDLC_DOWNLOAD,,}" == "true" ]]; then
+        echo "Creator DLC set to download/update"
+        STEAMCMD_BETA_ARGS=(-beta creatordlc)
+    else
+        echo "Creator DLC not set to download/update"
+    fi
+
     echo "Starting SteamCMD to download/update server..."
 
     /home/steam/steamcmd/steamcmd.sh \
         +force_install_dir /home/steam/arma3/server \
         +login $STEAM_USER $STEAM_PASSWORD \
         +app_update 233780 \
-        -beta creatordlc \
+        "${STEAMCMD_BETA_ARGS[@]}" \
         +quit
 
     MODS_DIR="/home/steam/Steam/steamapps/workshop/content/107410"
