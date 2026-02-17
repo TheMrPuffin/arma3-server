@@ -32,7 +32,6 @@ jobs:
           TAGS="$(git tag -l 'image-*' || true)"
           if [ -z "${TAGS}" ]; then
             echo "No image-* tags found."
-            # If you want this to still publish nightly from main, swap to a fallback here.
             exit 1
           fi
 
