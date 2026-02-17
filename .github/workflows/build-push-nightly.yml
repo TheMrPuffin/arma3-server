@@ -2,7 +2,7 @@ name: Docker Build and Push Nightly
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,97 +16,89 @@ env:
 jobs:
   nightly-build-and-push:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout (with tags)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Determine latest image tag
-        id: get_version
+      - name: Set owner + determine latest image version
+        id: vars
+        shell: bash
         run: |
-          TAGS=$(git tag -l 'image-*')
+          set -euo pipefail
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+          TAGS="$(git tag -l 'image-*' || true)"
           if [ -z "$TAGS" ]; then
-            echo "No image-* tags found. Nothing to rebuild."
-            exit 0
+            echo "No image-* tags found."
+            exit 1
           fi
 
-          LATEST_TAG=$(printf "%s\n" "$TAGS" | sort -V | tail -n 1)
+          LATEST_TAG="$(printf "%s\n" "$TAGS" | sort -V | tail -n 1)"
           VERSION="${LATEST_TAG#image-}"
 
           echo "Latest tag: $LATEST_TAG"
-          echo "Using version: $VERSION"
-
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Checkout code at latest image tag
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: image-${{ steps.get_version.outputs.version }}
-
-      - name: Set lowercase owner
-        id: lowercase_owner
-        run: |
-          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
-          echo "OWNER=$OWNER" >> "$GITHUB_ENV"
-          echo "Owner (lowercase): $OWNER"
+          ref: image-${{ steps.vars.outputs.version }}
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image (nightly)
-        run: |
-          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
-          echo "Nightly rebuild for ${FULL_IMAGE}:${VERSION} and :latest"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-          docker build --pull \
-            --build-arg IMAGE_VERSION="${VERSION}" \
-            -t "${FULL_IMAGE}:${VERSION}" \
-            -t "${FULL_IMAGE}:latest" \
-            .
+      - name: Build and push (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ env.IMAGE_NAME }}:latest
+          build-args: |
+            IMAGE_VERSION=${{ env.VERSION }}
+          provenance: true
+          sbom: true
 
-      - name: Push image (nightly)
+      - name: Cleanup GHCR untagged images (older than 24h)
+        if: success()
+        shell: bash
         run: |
-          FULL_IMAGE="${REGISTRY}/${OWNER}/${IMAGE_NAME}"
-          docker push "${FULL_IMAGE}:${VERSION}"
-          docker push "${FULL_IMAGE}:latest"
+          set -euo pipefail
 
-      - name: Install jq (for JSON parsing)
-        run: |
-          if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y jq
-          fi
+          sudo apt-get update
+          sudo apt-get install -y jq
 
-      - name: Cleanup GHCR untagged images
-        run: |
-          OWNER="${OWNER:-${GITHUB_REPOSITORY_OWNER,,}}"
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
           PACKAGE="${IMAGE_NAME}"
           API_URL="https://api.github.com"
 
-          echo "Cleaning untagged GHCR images for ${OWNER}/${PACKAGE} ..."
+          echo "Cleaning untagged GHCR images for ${OWNER}/${PACKAGE} (older than 24h)..."
 
-          VERSIONS=$(curl -sSf \
+          VERSIONS="$(curl -sSf \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")
+            "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions?per_page=100")"
 
-          echo "$VERSIONS" \
-            | jq -r '.[] | select(.metadata.container.tags | length == 0) | .id' \
-            | while read -r VERSION_ID; do
-                [ -z "$VERSION_ID" ] && continue
-                echo "Deleting untagged version ID: $VERSION_ID"
+          echo "${VERSIONS}" | jq -r '.[] | select((.metadata.container.tags|length)==0) | select((now-(.created_at|fromdateiso8601))>86400) | .id' \
+            | while read -r id; do
+                [ -z "$id" ] && continue
+                echo "Deleting untagged version ID: $id"
                 curl -sSf -X DELETE \
                   -H "Accept: application/vnd.github+json" \
                   -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-                  "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions/${VERSION_ID}" \
-                  && echo "Deleted ${VERSION_ID}"
+                  "${API_URL}/users/${OWNER}/packages/container/${PACKAGE}/versions/${id}" \
+                  && echo "Deleted $id"
               done
